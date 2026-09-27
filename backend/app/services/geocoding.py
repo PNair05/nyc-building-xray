@@ -1,14 +1,32 @@
 from __future__ import annotations
 
-import hashlib
+import base64
+import binascii
+import json
 from typing import Any
 
 from app.adapters.base import cached_json
 from app.models import Building
-from app.storage.cache import save_building
 
 
 BOROUGHS = {"MANHATTAN", "BRONX", "BROOKLYN", "QUEENS", "STATEN ISLAND"}
+
+
+def encode_live_building(building: Building) -> str:
+    payload = json.dumps(building.model_dump(exclude={"id"}), separators=(",", ":")).encode()
+    return "live-" + base64.urlsafe_b64encode(payload).decode().rstrip("=")
+
+
+def decode_live_building(building_id: str) -> Building | None:
+    if not building_id.startswith("live-"):
+        return None
+    encoded = building_id.removeprefix("live-")
+    try:
+        padding = "=" * (-len(encoded) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(encoded + padding))
+        return Building.model_validate({**payload, "id": building_id})
+    except (ValueError, TypeError, binascii.Error):
+        return None
 
 
 async def search_live(query: str, borough: str | None = None) -> list[Building]:
@@ -27,12 +45,10 @@ async def search_live(query: str, borough: str | None = None) -> list[Building]:
         pad = properties.get("addendum", {}).get("pad", {})
         coordinates = feature.get("geometry", {}).get("coordinates", [None, None])
         address = properties.get("name") or properties.get("label", "Unknown address").split(",")[0]
-        identity = f"{pad.get('bin')}:{pad.get('bbl')}:{address}:{found_borough}"
-        building_id = "live-" + hashlib.sha1(identity.encode()).hexdigest()[:14]
         confidence = float(properties.get("confidence", 0))
         match_type = properties.get("match_type", "unknown")
         building = Building(
-            id=building_id,
+            id="",
             address=address,
             borough=found_borough.title(),
             longitude=coordinates[0],
@@ -44,6 +60,6 @@ async def search_live(query: str, borough: str | None = None) -> list[Building]:
             confidence=confidence,
             ambiguity="Confirm this is the intended building." if confidence < 0.9 else None,
         )
-        save_building(building_id, building.model_dump())
+        building.id = encode_live_building(building)
         results.append(building)
     return results

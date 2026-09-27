@@ -9,7 +9,7 @@ from app.adapters.base import SourceUnavailable
 from app.fixtures import BUILDINGS
 from app.models import Building, Explanation, Health, Report
 from app.services.explanations import generate
-from app.services.geocoding import search_live
+from app.services.geocoding import decode_live_building, search_live
 from app.services.reports import build_report
 from app.services.building_models import building_model
 from app.storage.cache import load_building
@@ -66,7 +66,7 @@ def model(building_id: str):
     building = next((item for item in BUILDINGS if item.id == building_id), None)
     if building is None:
         raw = load_building(building_id)
-        if raw is None:
+        building = Building.model_validate(raw) if raw else decode_live_building(building_id)
+        if building is None:
             raise HTTPException(status_code=404, detail="Building not found. Search for the address again.")
-        building = Building.model_validate(raw)
     return building_model(building)

@@ -9,6 +9,7 @@ from app.adapters.base import AdapterResult, SourceUnavailable
 from app.fixtures import FIXTURES, REFERENCE_DATE, find_building
 from app.models import Building, Report, SourceCoverage, SummaryMetrics
 from app.services.analytics import CATEGORIES, create_findings, monthly_series, normalize_311, normalize_dob, normalize_hpd
+from app.services.geocoding import decode_live_building
 from app.storage.cache import load_building
 
 
@@ -52,9 +53,9 @@ async def build_report(building_id: str, months: int) -> Report | None:
         mode = "demo"
     else:
         raw = load_building(building_id)
-        if not raw:
+        building = Building.model_validate(raw) if raw else decode_live_building(building_id)
+        if not building:
             return None
-        building = Building.model_validate(raw)
         reference = datetime.now(ZoneInfo("America/New_York")).date()
         start, end = period_bounds(reference, months)
         fetched = await asyncio.gather(

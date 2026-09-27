@@ -336,9 +336,12 @@ def building_model(building: Building) -> dict:
         return {**unavailable, "reason": "index_outdated", "message": "The building model index needs to be rebuilt."}
     if catalog.get("version") != VERSION:
         return {**unavailable, "reason": "index_outdated", "message": "The building model index needs to be updated."}
-    districts = [d for d in catalog["districts"] if d["borough"] == building.borough and (MODEL_DIR / d["file"]).exists() and source_stamp(MODEL_DIR / d["file"]) == d["stamp"]]
+    districts = [d for d in catalog["districts"] if d["borough"] == building.borough]
     if building.demo:
-        sample = next((d["sample"] for d in districts if d.get("sample")), None)
+        sample = next((
+            d["sample"] for d in districts
+            if d.get("sample") and (OUTPUT_DIR / d["sample"]["name"]).with_suffix(".glb").exists()
+        ), None)
         if not sample:
             return unavailable
         return {"status": "ready", "match": "demo", "url": f"/models/buildings/{sample['name']}.glb", "download_url": f"/models/buildings/{sample['name']}.3dm", "message": "Single-building source example for this fictional demo address.", "object_count": sample["object_count"], "triangle_count": sample["triangle_count"]}
@@ -354,7 +357,10 @@ def building_model(building: Building) -> dict:
     metadata = output.with_suffix(".json")
     with EXTRACTION_LOCK:
         if not metadata.exists() or not output.with_suffix(".glb").exists() or not output.with_suffix(".3dm").exists():
-            source = rhino3dm.File3dm.Read(str(MODEL_DIR / district["file"]))
+            source_path = MODEL_DIR / district["file"]
+            if not source_path.exists() or source_stamp(source_path) != district["stamp"]:
+                return {**unavailable, "reason": "source_unavailable", "message": "This building has not been pre-generated for the hosted model catalog."}
+            source = rhino3dm.File3dm.Read(str(source_path))
             if source is None:
                 return unavailable
             try:

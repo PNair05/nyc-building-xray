@@ -1,7 +1,8 @@
 from datetime import date
 
-from app.models import Explanation, ExplanationFinding
+from app.models import Building, Explanation, ExplanationFinding
 from app.services.analytics import compare_equal_periods, documented_floor, hpd_status, normalize_311, normalize_hpd
+from app.services.geocoding import decode_live_building, encode_live_building
 from app.services.explanations import validate_evidence
 from app.services.matching import same_building_address
 from app.services.reports import period_bounds
@@ -47,6 +48,28 @@ def test_only_documented_numeric_hpd_story_becomes_a_floor_marker():
     ])[0]
     assert record.floor == 4
     assert record.location_detail == "Floor 4"
+
+
+def test_live_building_identity_is_self_contained():
+    building = Building(
+        id="",
+        address="300 EAST 38 STREET",
+        borough="Manhattan",
+        latitude=40.748,
+        longitude=-73.973,
+        bin="1034920",
+        bbl="1009437501",
+        source_ids={"geosearch": "test"},
+        match_method="NYC GeoSearch exact",
+        confidence=0.9,
+    )
+    building_id = encode_live_building(building)
+    decoded = decode_live_building(building_id)
+
+    assert decoded is not None
+    assert decoded.id == building_id
+    assert decoded.address == building.address
+    assert decoded.bin == building.bin
 
 
 def test_ai_evidence_ids_must_exist():
