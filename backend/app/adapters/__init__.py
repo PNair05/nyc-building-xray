@@ -1,0 +1,1 @@
+"""Independent official-source adapters."""

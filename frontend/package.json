@@ -1,0 +1,39 @@
+{
+  "name": "nyc-building-xray-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "npm run cesium:assets && next build",
+    "postinstall": "npm run cesium:assets",
+    "cesium:assets": "node scripts/copy-cesium-assets.mjs",
+    "models:preview": "../.venv/bin/python scripts/build_model_previews.py",
+    "models:buildings": "../.venv/bin/python scripts/build_building_models.py",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.1",
+    "cesium": "^1.145.0",
+    "next": "16.3.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "recharts": "3.10.1",
+    "rhino3dm": "^8.35.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@types/three": "^0.186.0",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.3.6",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
